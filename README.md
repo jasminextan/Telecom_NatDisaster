@@ -1,17 +1,27 @@
 # Telecom_NatDisaster
 
 ## Data Sources
+
 Telecom Database: https://www.kaggle.com/datasets/mattop/cellular-towers-in-the-united-states
+
 NRI Database: https://hazards.fema.gov/nri/map
+
 County SHP: https://www.census.gov/geographies/mapping-files/time-series/geo/carto-boundary-file.html
 
 ## Important Features
+
 COUNTY, County name
+
 POPULATION, Population (2020)
+
 AREA, Area (sq mi)
+
 TOWERCOUNT, The number of telecommunication towers in that county
+
 RISK_RATNG, National Risk Index (i.e. Level of natural disaster risk/impact), 0 - 4
+
 SHORTAGE_RATING, Quintile rating of the shortage of telecommunication towers based on area coverage and population, 0 - 4
+
 BUILDTOWER, Product of RISK_RATING and SHORTAGE_RATING, indicating areas that are high in natural disaster risk and low in cell tower coverage
 
 ## Outputs
