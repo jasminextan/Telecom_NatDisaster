@@ -1,6 +1,5 @@
 import pandas as pd
 import geopandas as gpd
-import numpy as np
 import matplotlib.pyplot as plt
 
 # DATA SOURCES
@@ -86,14 +85,14 @@ df['POPSHORTAGE_DIFF'] = df['TOWER_POP_DENS'] - 1.33
 df['AREASHORTAGE_DIFF'] = df['TOWER_AREA_DENS'] - 1.27
 df['SHORTAGE_SUM'] = df['AREASHORTAGE_DIFF'] + df['POPSHORTAGE_DIFF']
 
-# Identify quintile for feature "SHORTAGE_SUM" in df and create a new variable "SHORTAGE_Q" that indicates which quintile each entry falls under.
-df['SHORTAGE_Q'] = pd.qcut(df['SHORTAGE_SUM'], q=5, labels=False)
+# Identify quintile for feature "SHORTAGE_SUM" in df and create a new variable "SHORTAGE_RATING" that indicates which quintile each entry falls under.
+df['SHORTAGE_RATING'] = pd.qcut(df['SHORTAGE_SUM'], q=5, labels=False)
 
-# Create "BUILDTOWER" that multiplies "SHORTAGE_Q" and "RISK_RATNG", creating a measure of areas that are high in natural disaster risk and low in cell tower coverage.
-df['BUILDTOWER'] = df['SHORTAGE_Q'] * df['RISK_RATNG']
+# Create "BUILDTOWER" that multiplies "SHORTAGE_RATING" and "RISK_RATNG", creating a measure of areas that are high in natural disaster risk and low in cell tower coverage.
+df['BUILDTOWER'] = df['SHORTAGE_RATING'] * df['RISK_RATNG']
 
 # Retrieve Top 10 Counties
-top_ten = df.sort_values('BUILDTOWER', ascending=False).head(10)[['BUILDTOWER', 'COUNTY', 'SHORTAGE_Q', 'RISK_RATNG']]
+top_ten = df.sort_values('BUILDTOWER', ascending=False).head(10)[['BUILDTOWER', 'COUNTY', 'SHORTAGE_RATING', 'RISK_RATNG']]
 print(top_ten)
 
 # Save Changes
@@ -132,17 +131,17 @@ cbar = plt.colorbar(sm, ax=ax, fraction=0.02)  # Specify the ax argument
 plt.savefig('visualizations/RiskRating.png')
 plt.show()
 
-# PLOT SHORTAGE_Q
+# PLOT SHORTAGE_RATING
 # Create a figure and axis
 fig, ax = plt.subplots()
-# Plot the counties with color-coded SHORTAGE_Q
-gdf_counties.plot(column='SHORTAGE_Q', cmap='viridis', linewidth=0.1, ax=ax, edgecolor='0.8')
+# Plot the counties with color-coded SHORTAGE_RATING
+gdf_counties.plot(column='SHORTAGE_RATING', cmap='viridis', linewidth=0.1, ax=ax, edgecolor='0.8')
 # Customize the plot
 ax.set_title('Areas with Insufficent Coverage by County')
 ax.axis('off')
 # Add a colorbar
 sm = plt.cm.ScalarMappable(cmap='viridis')
-sm.set_array(gdf_counties['SHORTAGE_Q'])
+sm.set_array(gdf_counties['SHORTAGE_RATING'])
 cbar = plt.colorbar(sm, ax=ax, fraction=0.02)  # Specify the ax argument
 # Show and save the plot
 plt.savefig('visualizations/CellTowerShortage.png')
@@ -166,15 +165,15 @@ plt.show()
 
 print(top_ten)
 '''
-      BUILDTOWER      COUNTY  SHORTAGE_Q  RISK_RATNG
-433         12.0  WASHINGTON           4         3.0
-527         12.0       CLARK           4         3.0
-289         12.0      MARION           4         3.0
-865         12.0     DOUGLAS           4         3.0
-792         12.0      ORANGE           4         3.0
-607         12.0   LAFAYETTE           4         3.0
-1248        12.0       WAYNE           4         3.0
-787         12.0      ORANGE           3         4.0
-2096        12.0   ST. LOUIS           4         3.0
-179         12.0     JACKSON           4         3.0
+      BUILDTOWER      COUNTY  SHORTAGE_RATING  RISK_RATNG
+433         12.0  WASHINGTON                4         3.0
+527         12.0       CLARK                4         3.0
+289         12.0      MARION                4         3.0
+865         12.0     DOUGLAS                4         3.0
+792         12.0      ORANGE                4         3.0
+607         12.0   LAFAYETTE                4         3.0
+1248        12.0       WAYNE                4         3.0
+787         12.0      ORANGE                3         4.0
+2096        12.0   ST. LOUIS                4         3.0
+179         12.0     JACKSON                4         3.0
 '''
