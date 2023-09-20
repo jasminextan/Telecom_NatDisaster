@@ -48,21 +48,53 @@ merged_df.to_csv('data/Merged_Dataset.csv', index=False)
 # "RISK_RATNG" is currently in String form. Turn it into indexes, where Very Low = 1, Relatively Low = 2, Relatively Moderate = 3, Relatively High = 4, Very High = 5
 
 df = pd.read_csv('data/Merged_Dataset.csv')
-mapping = {'Very Low': 1, 'Relatively Low': 2, 'Relatively Moderate': 3, 'Relatively High': 4, 'Very High': 5}
+mapping = {'Very Low': 0, 'Relatively Low': 1, 'Relatively Moderate': 2, 'Relatively High': 3, 'Very High': 4}
 df['RISK_RATNG'] = df['RISK_RATNG'].map(mapping).astype(float)
 
 # Create population density POP_DENS feature (Population/Sq Mile)
 
 df['POP_DENS'] = df['POPULATION'] / (df['AREA'])
 
-# Create telecom tower density TOWER_DENS feature (Towers/100 Sq Mile), removing outliers
+# Create telecom population density TOWER_POP_DENS feature (Towers/100 Population), removing outliers
 
-df['TOWER_DENS'] = df['TOWERCOUNT'] / (df['AREA'] / 100)
-z_scores = (df['TOWER_DENS'] - df['TOWER_DENS'].mean()) / df['TOWER_DENS'].std()
+df['TOWER_POP_DENS'] = df['TOWERCOUNT'] / (df['POPULATION']/100)
+z_scores = (df['TOWER_POP_DENS'] - df['TOWER_POP_DENS'].mean()) / df['TOWER_POP_DENS'].std()
 threshold = 3
 df = df[abs(z_scores) <= threshold]
 
-# Create TOWER_SHORTAGE, which calculates which counties need the most support
+# Create telecom area density TOWER_AREA_DENS feature (Towers/100 Sq Mile), removing outliers
+
+df['TOWER_AREA_DENS'] = df['TOWERCOUNT'] / (df['AREA'] / 100)
+z_scores = (df['TOWER_AREA_DENS'] - df['TOWER_AREA_DENS'].mean()) / df['TOWER_AREA_DENS'].std()
+threshold = 3
+df = df[abs(z_scores) <= threshold]
+
+# Create TOWER_SHORTAGE, which calculates which counties have cell tower shortages, based on area coverage and population density
+# On average, the maximum usable range of a cell tower is 25 miles (40 kilometers). The typical coverage radius of a cell tower is 1 to 3 miles.
+# To be conservative, we will take 5 miles as the ideal coverage range of a cell tower.
+# Source: https://dgtlinfra.com/cell-tower-range-how-far-reach/
+# With a radius of 5 miles, each tower can cover 79 sq miles. 
+# Therefore, Ideal TOWER_AREA_DENS = 1.27 towers / 100 miles
+
+# An average cellular tower allows about 30 simultaneous users for voice calls and 60 for 4G data.
+# For 80% of the population to have 4G access in a natural disaster, one cell tower can cover 75 population.
+# Source: https://surecall.com/surecall-cell-phone-signal-booster-blog/capacity-in-the-cell-signal-oriented-world/
+# Therefore: Ideal  = 1.33 towers / 100 population
+
+# Difference between ideal and actual
+df['POPSHORTAGE_DIFF'] = df['TOWER_POP_DENS'] - 1.33
+df['AREASHORTAGE_DIFF'] = df['TOWER_AREA_DENS'] - 1.27
+df['SHORTAGE_SUM'] = df['AREASHORTAGE_DIFF'] + df['POPSHORTAGE_DIFF']
+
+# Identify quintile for feature "SHORTAGE_SUM" in df and create a new variable "SHORTAGE_Q" that indicates which quintile each entry falls under.
+df['SHORTAGE_Q'] = pd.qcut(df['SHORTAGE_SUM'], q=5, labels=False)
+
+# Create "BUILDTOWER" that multiplies "SHORTAGE_Q" and "RISK_RATNG", creating a measure of areas that are high in natural disaster risk and low in cell tower coverage.
+df['BUILDTOWER'] = df['SHORTAGE_Q'] * df['RISK_RATNG']
+
+# Retrieve Top 10 Counties
+top_ten = df.sort_values('BUILDTOWER', ascending=False).head(10)[['BUILDTOWER', 'COUNTY', 'SHORTAGE_Q', 'RISK_RATNG']]
+print(top_ten)
 
 # Save Changes
 df.to_csv('data/Merged_Dataset.csv', index=False)
@@ -97,21 +129,52 @@ sm = plt.cm.ScalarMappable(cmap='viridis')
 sm.set_array(gdf_counties['RISK_RATNG'])
 cbar = plt.colorbar(sm, ax=ax, fraction=0.02)  # Specify the ax argument
 # Show and save the plot
-plt.show()
 plt.savefig('visualizations/RiskRating.png')
+plt.show()
 
-# PLOT TOWER_DENS
+# PLOT SHORTAGE_Q
 # Create a figure and axis
 fig, ax = plt.subplots()
-# Plot the counties with color-coded TOWER_DENS
-gdf_counties.plot(column='TOWER_DENS', cmap='viridis', linewidth=0.1, ax=ax, edgecolor='0.8')
+# Plot the counties with color-coded SHORTAGE_Q
+gdf_counties.plot(column='SHORTAGE_Q', cmap='viridis', linewidth=0.1, ax=ax, edgecolor='0.8')
 # Customize the plot
-ax.set_title('Cell Tower Density (Towers per 100 Sq Miles) by County')
+ax.set_title('Areas with Insufficent Coverage by County')
 ax.axis('off')
 # Add a colorbar
 sm = plt.cm.ScalarMappable(cmap='viridis')
-sm.set_array(gdf_counties['TOWER_DENS'])
+sm.set_array(gdf_counties['SHORTAGE_Q'])
 cbar = plt.colorbar(sm, ax=ax, fraction=0.02)  # Specify the ax argument
-# Show the plot
+# Show and save the plot
+plt.savefig('visualizations/CellTowerShortage.png')
 plt.show()
-plt.savefig('visualizations/CellTowerDensity.png')
+
+# PLOT BUILDTOWER
+# Create a figure and axis
+fig, ax = plt.subplots()
+# Plot the counties with color-coded BUILDTOWER
+gdf_counties.plot(column='BUILDTOWER', cmap='viridis', linewidth=0.1, ax=ax, edgecolor='0.8')
+# Customize the plot
+ax.set_title('Areas with Insufficent Coverage and High Natural Disaster Risk by County')
+ax.axis('off')
+# Add a colorbar
+sm = plt.cm.ScalarMappable(cmap='viridis')
+sm.set_array(gdf_counties['BUILDTOWER'])
+cbar = plt.colorbar(sm, ax=ax, fraction=0.02)  # Specify the ax argument
+# Show and save the plot
+plt.savefig('visualizations/BUILDTOWERSHERE.png')
+plt.show()
+
+print(top_ten)
+'''
+      BUILDTOWER      COUNTY  SHORTAGE_Q  RISK_RATNG
+433         12.0  WASHINGTON           4         3.0
+527         12.0       CLARK           4         3.0
+289         12.0      MARION           4         3.0
+865         12.0     DOUGLAS           4         3.0
+792         12.0      ORANGE           4         3.0
+607         12.0   LAFAYETTE           4         3.0
+1248        12.0       WAYNE           4         3.0
+787         12.0      ORANGE           3         4.0
+2096        12.0   ST. LOUIS           4         3.0
+179         12.0     JACKSON           4         3.0
+'''
